@@ -16,7 +16,8 @@ uint32_t func(uint32_t x) {
 */
 
 
-uint32_t func(uint32_t x) {
+uint32_t func(uint32_t x)
+{
     uint32_t r = 1, n = 0;
     for (; r; r <<= 1)
         n = (n << 1) | !!(x & r);
@@ -24,7 +25,8 @@ uint32_t func(uint32_t x) {
 }
 
 
-int main(void) {
+int main(void)
+{
     for (int i = 0; i < 10; ++i) {
         uint32_t x = rand();
         uint32_t n = func(x);
