@@ -8,5 +8,11 @@ all: ../build/Q1
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 ../build/Q1: $(OBJS)
-	mkdir -p ../build
+	-mkdir -p ../build
 	$(CC) -o $@ $^
+
+.PHONY: clean
+clean:
+	@echo "Clean..."
+	-rm *.o 
+	-rm ../build/Q1
