@@ -24,7 +24,7 @@ static struct header_t *get_free_block(size_t size)
 }
 
 
-pthread_mutex_t global_malloc_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t global_malloc_lock = PTHREAD_MUTEX_INITIALIZER;     // Q4: Mutex object should be initialized
 
 
 void *malloc(size_t size)
@@ -36,17 +36,17 @@ void *malloc(size_t size)
     if (!size)
         return NULL;
 
-    pthread_mutex_lock(&global_malloc_lock);
+    pthread_mutex_lock(&global_malloc_lock);                        // Q4: Enter critical region to prevent race-condition in the multi-thread enviroment
 
     if ((header = get_free_block(size))) {
         header->is_free = 0;
-        pthread_mutex_unlock(&global_malloc_lock);
-        return (void *) ((char *) header + sizeof (struct header_t));
+        pthread_mutex_unlock(&global_malloc_lock);                  // Q4: Leave critical region before function return
+        return (void *) ((char *) header + sizeof (struct header_t));   // Q4: Calculate actual memory address for client usages, positive shifted by header_t bytes
     }
 
     total_size = sizeof(struct header_t) + size;
     if ((block = sbrk(total_size)) == (void *) -1) {
-        pthread_mutex_unlock(&global_malloc_lock);
+        pthread_mutex_unlock(&global_malloc_lock);                  // Q4: Leave critical region before function return
         return NULL;
     }
 
@@ -55,14 +55,14 @@ void *malloc(size_t size)
     header->is_free = 0;
     header->next = NULL;
 
-    if (tail) {
-        tail->next = header;
-        tail = header;
-    } else
-        head = tail = header;
+    if (tail) {                 // Q4: The new block should be appended
+        tail->next = header;    //     behind the tail of the internal
+        tail = header;          //     memory linked list (specified by
+    } else                      //     variables `head` and `tail`)
+        head = tail = header;   // Q4: Add the first block to the memory linked list
 
-    pthread_mutex_unlock(&global_malloc_lock);
-    return (void *) ((char *) header + sizeof (struct header_t));
+    pthread_mutex_unlock(&global_malloc_lock);                      // Q4: Leave critical region before function return
+    return (void *) ((char *) header + sizeof (struct header_t));   // Q4: Calculate actual memory address for client usages, positive shifted by header_t bytes
 }
 
 
@@ -75,14 +75,17 @@ void free(void *block)
         return;
     }
 
+    // Calculate the header address from the block pointer, negative shifted by header_t bytes
     struct header_t *header = (struct header_t *) ((char *) block - sizeof (struct header_t));
 
-    pthread_mutex_lock(&global_malloc_lock);
+    pthread_mutex_lock(&global_malloc_lock);                // Enter critical region to prevent race-condition in the multi-thread enviroment
 
+    // Search the matched block from the memory linked list
     struct header_t *curr = head;
     while (curr) {
         if (curr == header) {
 #ifdef DETECT_ERROR
+            // Test that this block should not be free
             if (curr->is_free)
                 fprintf(stderr, "Freeing a non-allocated block %p\n", block);
 #endif
@@ -93,11 +96,12 @@ void free(void *block)
     }
 
 #ifdef DETECT_ERROR
+    // Test whether this block is valid or not (should be in the memory linked list)
     if (!curr)
         fprintf(stderr, "Freeing an invalid block %p\n", block);
 #endif
 
-    pthread_mutex_unlock(&global_malloc_lock);
+    pthread_mutex_unlock(&global_malloc_lock);              // Leave critical region before function return
 }
 
 
